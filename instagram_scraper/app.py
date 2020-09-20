@@ -621,6 +621,8 @@ class InstagramScraper(object):
         """Crawls through and downloads user's media"""
         self.session.headers.update({'user-agent': STORIES_UA})
         try:
+            total_users = len(self.usernames)
+            completed_users_count = 0
             for username in self.usernames:
                 self.posts = []
                 self.stories = []
@@ -678,6 +680,9 @@ class InstagramScraper(object):
 
                 except ValueError:
                     self.logger.error("Unable to scrape user - %s" % username)
+
+                completed_users_count += 1
+                print("Completed: " + str(completed_users_count) + '/' + str(total_users))
         finally:
             self.quit = True
             self.logout()
@@ -907,7 +912,7 @@ class InstagramScraper(object):
                     stories.extend(self.__fetch_stories(HIGHLIGHT_STORIES_REEL_ID_URL.format('%22%2C%22'.join(str(x) for x in ids_chunk)), fetching_highlights_metadata=True))
 
                 return stories
-              
+
         return []
 
     def fetch_broadcasts(self, user_id):
@@ -1062,7 +1067,7 @@ class InstagramScraper(object):
     def set_story_url(self, item):
         """Sets the story url."""
         urls = []
-        if 'video_resources' in item:
+        if 'video_resources' in item and item['video_resources']:
             urls.append(item['video_resources'][-1]['src'])
         if 'display_resources' in item:
             urls.append(item['display_resources'][-1]['src'])
@@ -1074,7 +1079,7 @@ class InstagramScraper(object):
 
         if self.filter_locations:
             save_dir = os.path.join(save_dir, self.get_key_from_value(self.filter_locations, item["location"]["id"]))
-        
+
         files_path = []
 
         for full_url, base_name in self.templatefilename(item):
@@ -1377,7 +1382,7 @@ class InstagramScraper(object):
     @staticmethod
     def get_locations_from_file(locations_file):
         """
-        parse an ini like file with sections composed of headers, [locaiton], 
+        parse an ini like file with sections composed of headers, [locaiton],
         and arguments that are location ids
         """
         locations={}
@@ -1446,6 +1451,8 @@ class InstagramScraper(object):
 
 
 def main():
+    start_time = time.time()
+    print("Downloading IG data")
     parser = argparse.ArgumentParser(
         description="instagram-scraper scrapes and downloads an instagram user's photos and videos.",
         epilog=textwrap.dedent("""
@@ -1563,7 +1570,7 @@ def main():
         locations.setdefault('', [])
         locations[''] = InstagramScraper.parse_delimited_str(','.join(args.filter_location))
         args.filter_locations = locations
-        
+
     if args.media_types and len(args.media_types) == 1 and re.compile(r'[,;\s]+').findall(args.media_types[0]):
         args.media_types = InstagramScraper.parse_delimited_str(args.media_types[0])
 
@@ -1599,7 +1606,9 @@ def main():
         scraper.scrape()
 
     scraper.save_cookies()
-
+    total_time = time.time() - start_time
+    print("--- %.2f seconds ---" % total_time)
+    print("--- %.2f minutes ---" % (total_time/60))
 
 if __name__ == '__main__':
     main()
